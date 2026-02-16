@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<!--<script>
+    $(function() {
+        $.scrollify({
+            section : "section",
+        });
+    });
+</script>-->
+
+  <meta charset="UTF-8">
+  <title></title>
+  <link rel="stylesheet" href="css/lab.css">
+
+  <!--<script src="js/lab.js"></script>-->
+
+</head>
+<body>
+  <header>
+    <div id="logo" onclick="slowScroll('#top')">
+      <span>Pearl Abyss</span>
+    </div>
+    <div id="about">
+      <a href="#" title="Открытый мир" onclick="slowScroll('#main')">Открытый мир</a>
+      <a href="#" onclick="slowScroll('#overview')" title="Графика">Графика</a>
+      <a href="#" onclick="slowScroll('#contacts')" title="Обратная связь">Обратная связь</a>
+      <a href="#" onclick="slowScroll('#faq')" title="Ответы на вопросы">FAQ</a>
+    </div>
+  </header>
+
+  <div id="top">
+    <h1>Black Desert Online</h1>
+    <h3><small><small><small>Black Desert - это MMORPG, которая сочетает в себе элементы сразу нескольких жанров: стратегии в реальном времени, ролевой игры и симулятора жизни. Отличительной чертой являются масштабные баталии, требующие слаженной командной работы и выверенных стратегических решений.</small></small></small></h3>
+  </div>
+
+  <div id="main">
+    <div class="intro">
+      <h2>Отправляйтесь в приключение прямо сейчас!</h2>
+      <span>Раскройте тайные древних в удивительном мире Black Desert!</span>
+    </div>
+    <div class="text2">
+      <span>Основа древней цивилизации - таинственные «Черные камни» - являясь мощным источником энергии, оказали большое влияние на развитие технологий Древних. В то же время, говорят, что Черные камни, затуманив разум Древних своей неестественной активностью, стали причиной падения их цивилизации. Большое количество Черных камней находится в пустыне между Кальфеоном и Валенсией. Кальфеон назвал землю, где сокрыты Черные камни, Черной пустыней и развязал войну с целью захвата ее ресурсов. А в Валенсии эту пустыню называют Красной, так как множество солдатов Валенсии погибло в кровопролитной войне. Раскройте секреты цивилизации Древних, таящиеся в недрах истории!</span>
+    </div>
+  </div>
+
+  <div id="overview">
+    <h2>Графика </h2>
+    <h4>Познакомьтесь с миром Black Desert, созданным на основе самостоятельно разработанного движка</h4>
+
+    <div class="img">
+      <img src="Black Desert/BDO Remastering.gif" width="111" height="255" alt="">
+      <span>Наилучшая графика благодаря Ремастерингу</span>
+    </div>
+    <div class="img">
+      <a href="#"><img src="Black Desert/Open_World.gif" width="111" height="255" alt=""></a>
+      <span>Огромный открытый мир с разнообразным контентом</span>
+    </div>
+  </div>
+  
+  <!--Скрытый слайдер JS
+    <div class="slideshow-container">
+    <div class="mySlides fade" style="display: block;">
+        <div class="numbertext">ㅤ</div>
+        <img src="Black Desert/Velia.jpg" style="width: 100%;" alt="">
+        <div class="text">Text</div>
+        
+    </div>
+
+    <div class="mySlides fade" style="display: block;">
+        <div class="numbertext">ㅤ</div>
+        <img src="Black Desert/Calpheon_city.jpg" style="width: 100%;" alt="">
+        <div class="text">Text</div>
+    </div>
+
+    <div class="mySlides fade" style="display: block;">
+        <div class="numbertext">ㅤ</div>
+        <img src="Black Desert/Valencia_City.jpg" style="width: 100%;" alt="">
+        <div class="text">Text</div>
+    </div> -->
+</div>
+
+<!--Скрытые доты слайдера
+<br>
+<div style="text-align: center;">
+    <span class="dot" onclick="currentSlide(1)"></span>
+    <span class="dot" onclick="currentSlide(2)"></span>
+    <span class="dot" onclick="currentSlide(3)"></span>
+</div>-->
+
+<div class="numbertext">ㅤ</div>
+
+<!--Спойлер 1-->
+<div class="spoiler-wrap disabled">
+  <div class="spoiler-head"><center>Название спойлера</center></div>
+  <div class="spoiler-body">текст текст текст</div>
+</div>
+
+<!--Спойлер 2-->
+<div class="spoiler-wrap disabled">
+  <div class="spoiler-head"><center>Название спойлера</center></div>
+  <div class="spoiler-body">текст текст текст
+    </div>
+</div>
+
+<!--Спойлер 3-->
+<div class="spoiler-wrap disabled">
+  <div class="spoiler-head"><center>Название спойлера</center></div>
+  <div class="spoiler-body">текст текст текст
+    </div>
+</div>
+
+  <div id="contacts">
+    <center><h5>Обратная связь</h5></center>
+    <form id="form_input">
+      <label for="name">Имя <span>*</span></label><br>
+      <input type="text2" placeholder="Введите имя" name="name" id="name"><br>
+      <label for="email">Ваша почта <span>*</span></label><br>
+			<input type="email" placeholder="Введите email" name="email" id="email"><br>
+			<label for="message">Сообщение <span>*</span></label><br>
+			<textarea placeholder="Введите ваше сообщение" name="message" id="message"></textarea><br>
+			<div id="mess_send" class="btn">Отправить</div>
+    </form>
+  </div>
+
+  <div id="faq">
+    <div>
+      <span class="title">PvP и GvG</span><br>
+      <span class="heading">Что предствляет из себя боевая система?</span>
+      <p>Захватывающие бои с системой Non-targer. Испытайте азарт увлекательной битвы! Реалистичные бои с использованием комбо из различных навыков, а также потрясающие эффекты!</p>
+      <span class="heading">Что такое GvG?</span>
+      <p>Крупномасштабные PvP битвы. В Black Desert Вы можете наслаждаться PvP контентом в масштабе гильдий. Учавствуйте в битвах за узлы и захвате территории! Приведите свою гильдию к победе, сплотившись с соратниками.</p>
+    </div>
+    <div>
+      <span class="title">Знания и персонажи</span><br>
+      <span class="heading">Уникальная система знаний</span>
+      <p>Контент, основанный на знаниях. Знания - сила! Чем больше Вы получаете знаний, тем сильнее становитесь. Получить знания можно различными способами - в ходе битвы или исследования, либо в диалоге с НИП.</p>
+      <span class="heading">Уникальные персонажи</span>
+      <p>С помощью уникальной системы создания персонажа в Black Desert, вы можете самостоятельно настроить внешность своего персонажа. Можно регулировать как рост, телосложение, причёску и форму лица, так и мелчайшие детали!</p>
+    </div>
+    <div>
+      <span class="heading">Тех поддержка</span>
+      <p><a href="https://ru.pearlabyss.com/Support/Start">https://ru.pearlabyss.com/Support/Start</a></p>
+      <span class="heading">Наши контакты</span>
+      <p>contact@pearlabyss.com,<br><a href="#"></p>
+      <a href="https://www.ru.playblackdesert.com/main/index/">Оффициальный сайт Black Desert Online</a>
+      <p><p><img src="Black Desert/Pearl_Abyss_Logo.png" width="180" height="30" alt=""></p></p>
+    </div>
+  </div>
+
+  <!--Навигация по кнопкам JS-->
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script>
+    function slowScroll(id) {
+      $('html, body').animate({
+        scrollTop: $(id).offset().top
+      }, 500);
+    }
+
+    $(document).on("scroll", function () {
+      if($(window).scrollTop() === 0)
+        $("header").removeClass("fixed");
+      else
+        $("header").attr("class", "fixed");
+    });
+	
+	function openNav() {
+      document.getElementById("mySidenav").style.width = "250px";
+    }
+
+    function closeNav() {
+      document.getElementById("mySidenav").style.width = "0";
+    }
+    $(function () {
+	$('.spoiler-body').hide(300);
+	$(document).on('click','.spoiler-head',function (e) {
+		e.preventDefault()
+		$(this).parents('.spoiler-wrap').toggleClass("active").find('.spoiler-body').slideToggle();
+	})
+})
+  </script>
+</body>
+</html>
