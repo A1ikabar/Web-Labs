@@ -174,7 +174,7 @@ header.fixed #logo {
 
 #top {
   width: 100%;
-  background-image: url("../Black Desert/Open_World_2.jpg");
+  background-image: url("тут должна быть картинка"); /*../папка/картинка*/
   background-blend-mode: multiply;
   background-color: #2e3a44;
   background-size: cover;
@@ -262,7 +262,7 @@ header.fixed #logo {
 
 #overview {
   float: left;
-  background-image: url("../Black Desert/Open_World_5.jpg");
+  background-image: url("тут должна быть картинка"); /*../папка/картинка*/
 
   background-blend-mode: multiply;
   background-color: #403f40;
