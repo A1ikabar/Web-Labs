@@ -15,12 +15,8 @@ if not settings.configured:
             "django.contrib.contenttypes",
             "django.contrib.auth",
         ],
-        DATABASES={
-            "default": {
-                "ENGINE": "django.db.backends.sqlite3",
-                "NAME": os.path.join(os.path.dirname(__file__), "db.sqlite3"),
-            }
-        },
+        DATABASES={},
+
         USE_TZ=True,
         TIME_ZONE="UTC",
     )
