@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: wp_labs_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: student
+      POSTGRES_PASSWORD: student_secure_password
+      POSTGRES_DB: wp_labs
+    ports:
+      - "5433:5432"
+    volumes:
+      - wp_labs_postgres:/var/lib/postgresql/data
+
+volumes:
+  wp_labs_postgres:
