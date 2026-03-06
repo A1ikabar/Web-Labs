@@ -27,31 +27,6 @@ API позволяет работать с сущностью **Work** (рабо
 - Docker Compose
 - Postman (для тестирования API)
 
----
-
-# Структура проекта
-
-```text
-Web-Labs
-│
-├── docker-compose.yml
-├── README.md
-│
-├── web_labs
-│   ├── manage.py
-│   ├── web_labs
-│   │   ├── settings.py
-│   │   ├── urls.py
-│   │
-│   └── lab2
-│       ├── models.py
-│       ├── views.py
-│       ├── urls.py
-│       └── migrations
-```
-
----
-
 # Запуск проекта
 
 ## 1. Клонирование репозитория
