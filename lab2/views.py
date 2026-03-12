@@ -5,7 +5,21 @@ from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
+from authapp.auth_service import get_current_user_from_access_token
+
+
 from .models import Work
+
+def get_authenticated_user(request):
+    access_token = request.COOKIES.get("access_token")
+
+    if not access_token:
+        return None
+
+    try:
+        return get_current_user_from_access_token(access_token)
+    except ValueError:
+        return None
 
 def work_to_dict(work):
     return {
@@ -25,6 +39,11 @@ def get_active_work_or_none(work_id):
 
 @csrf_exempt
 def works_list(request):
+    user = get_authenticated_user(request)
+
+    if not user:
+        return JsonResponse({"error": "unauthorized"}, status=401)
+
     if request.method == "GET":
         page = request.GET.get("page", "1")
         limit = request.GET.get("limit", "10")
@@ -74,7 +93,8 @@ def works_list(request):
         work = Work.objects.create(
             title=title,
             description=description,
-            author_name=author_name
+            author_name=author_name,
+            owner=user
         )
 
         return JsonResponse(work_to_dict(work), status=201)
@@ -85,6 +105,11 @@ def works_list(request):
 def work_detail(request, work_id):
     work = get_active_work_or_none(work_id)
 
+    user = get_authenticated_user(request)
+
+    if not user:
+        return JsonResponse({"error": "unauthorized"}, status=401)
+
     if work is None:
         return JsonResponse({"error": "Work not found"}, status=404)
 
@@ -92,6 +117,10 @@ def work_detail(request, work_id):
         return JsonResponse(work_to_dict(work), status=200)
 
     if request.method == "PUT":
+
+        if work.owner_id != user.id:
+            return JsonResponse({"error": "forbidden"}, status=403)
+
         try:
             body = json.loads(request.body)
         except json.JSONDecodeError:
@@ -115,6 +144,10 @@ def work_detail(request, work_id):
         return JsonResponse(work_to_dict(work), status=200)
 
     if request.method == "PATCH":
+
+        if work.owner_id != user.id:
+            return JsonResponse({"error": "forbidden"}, status=403)
+
         try:
             body = json.loads(request.body)
         except json.JSONDecodeError:
@@ -139,6 +172,8 @@ def work_detail(request, work_id):
         return JsonResponse(work_to_dict(work), status=200)
 
     if request.method == "DELETE":
+        if work.owner_id != user.id:
+            return JsonResponse({"error": "forbidden"}, status=403)
         work.deleted_at = timezone.now()
         work.save()
         return HttpResponse(status=204)

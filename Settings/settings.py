@@ -11,19 +11,22 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+import os
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-@+x-5-n_$ku+eyswvb%s1mzit6jn5e%)xmrs@qncli)37vd6@#'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback-key')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = []
 
@@ -38,6 +41,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'lab2',
+    'users',
+    'authapp',
 ]
 
 MIDDLEWARE = [
@@ -76,11 +81,11 @@ WSGI_APPLICATION = 'Settings.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',  # PostgreSQL
-        'NAME': 'wp_labs',  # Имя базы данных
-        'USER': 'student',  # Имя пользователя для подключения
-        'PASSWORD': 'student_secure_password',  # Пароль
-        'HOST': 'localhost',  # Хост базы данных
-        'PORT': '5433',  # Порт PostgreSQL
+        'NAME': os.getenv('DB_NAME'),  # Имя базы данных
+        'USER': os.getenv('DB_USER'),  # Имя пользователя для подключения
+        'PASSWORD': os.getenv('DB_PASSWORD'),  # Пароль
+        'HOST': os.getenv('DB_HOST', 'localhost'),  # Хост базы данных
+        'PORT': os.getenv('DB_PORT', '5433'),  # Порт PostgreSQL
     }
 }
 
