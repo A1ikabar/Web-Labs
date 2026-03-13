@@ -8,24 +8,14 @@ from authapp.auth_service import register_user, login_user, get_current_user_fro
 
 @csrf_exempt
 def register(request):
-
-    if request.method != "POST":
-        return JsonResponse({"error": "method not allowed"}, status=405)
-
     try:
         body = json.loads(request.body)
-
         dto = RegisterDTO(body)
-
-        user = register_user(
-            dto.email,
-            dto.password,
-            dto.phone
-        )
+        user = register_user(dto)
 
         return JsonResponse({
             "id": str(user.id),
-            "email": user.email
+            "email": user.email,
         }, status=201)
 
     except ValueError as e:

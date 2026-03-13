@@ -1,3 +1,4 @@
+from authapp import dto
 from users.models import User
 from authapp.utils import hash_password
 from authapp.utils import verify_password, generate_token_salt, hash_token
@@ -6,15 +7,17 @@ from users.models import UserToken
 from django.utils import timezone
 from datetime import timedelta
 
-def register_user(email: str, password: str, phone: str | None):
+def register_user(dto):
+    existing_user = User.objects.filter(email=dto.email).first()
+    if existing_user:
+        raise ValueError("user with this email already exists")
 
-    password_hash, password_salt = hash_password(password)
+    password_hash, password_salt = hash_password(dto.password)
 
     user = User.objects.create(
-        email=email,
-        phone=phone,
+        email=dto.email,
         password_hash=password_hash,
-        password_salt=password_salt
+        password_salt=password_salt,
     )
 
     return user
