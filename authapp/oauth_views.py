@@ -23,6 +23,7 @@ def oauth_initiate(request, provider: str):
     
     # ✅ Генерация state для защиты от CSRF
     state = YandexOAuthService.generate_state()
+    request.session['oauth_state'] = state
     
     # ✅ Формирование URL для редиректа
     authorization_url = YandexOAuthService.get_authorization_url(state)
@@ -53,8 +54,12 @@ def oauth_callback(request, provider: str):
         return JsonResponse({"error": "Код авторизации не получен"}, status=400)
     
     # ✅ Проверка state (защита от CSRF)
-    if not state or not YandexOAuthService.validate_state(state):
+    saved_state = request.session.get('oauth_state')
+
+    if not state or not saved_state or state != saved_state:
         return JsonResponse({"error": "Неверный state-токен"}, status=403)
+
+    del request.session['oauth_state']
     
     try:
         # ✅ Обмен кода на токен Яндекс
@@ -63,6 +68,7 @@ def oauth_callback(request, provider: str):
         
         # ✅ Получение данных пользователя
         yandex_info = YandexOAuthService.get_user_info(yandex_access_token)
+        print("YANDEX INFO:", yandex_info)
         
         # ✅ Поиск или создание пользователя в локальной БД
         user = YandexOAuthService.find_or_create_user(yandex_info)
@@ -96,4 +102,6 @@ def oauth_callback(request, provider: str):
     except ValueError as e:
         return JsonResponse({"error": str(e)}, status=400)
     except Exception as e:
-        return JsonResponse({"error": "Внутренняя ошибка сервера"}, status=500)
+        import traceback
+        print(traceback.format_exc())
+        return JsonResponse({"error": str(e)}, status=500)

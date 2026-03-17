@@ -10,6 +10,7 @@ from users.models import User
 from authapp.jwt_utils import create_access_token, create_refresh_token
 from authapp.utils import hash_password, hash_token
 from .oauth_config import YandexOAuthConfig
+from urllib.parse import urlencode
 
 class YandexOAuthService:
     """Сервис для работы с Яндекс OAuth"""
@@ -46,8 +47,7 @@ class YandexOAuthService:
             'scope': YandexOAuthConfig.SCOPE,
             'state': state,
         }
-        
-        query_string = '&'.join([f'{key}={value}' for key, value in params.items()])
+        query_string = urlencode(params)
         return f"{YandexOAuthConfig.AUTHORIZATION_URL}?{query_string}"
     
     @staticmethod
@@ -72,7 +72,12 @@ class YandexOAuthService:
     def get_user_info(access_token: str) -> dict:
         """Получение данных пользователя от Яндекс"""
         headers = {'Authorization': f'OAuth {access_token}'}
-        response = requests.get(YandexOAuthConfig.USER_INFO_URL, headers=headers)
+        response = requests.get(
+            YandexOAuthConfig.USER_INFO_URL,
+            headers=headers,
+            params={'format': 'json'},
+            timeout=10
+        )
         
         if response.status_code != 200:
             raise ValueError(f"Yandex user info error: {response.text}")
@@ -83,7 +88,11 @@ class YandexOAuthService:
     def find_or_create_user(yandex_info: dict) -> User:
         """Поиск или создание пользователя в локальной БД"""
         yandex_id = str(yandex_info.get('id'))
-        email = yandex_info.get('default_email') or yandex_info.get('emails', [None])[0]
+        email = yandex_info.get('default_email')
+        
+        if not email:
+            emails = yandex_info.get('emails') or []
+            email = emails[0] if emails else None
         
         if not email:
             raise ValueError("Email не получен от Яндекс")
