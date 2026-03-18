@@ -43,6 +43,8 @@ INSTALLED_APPS = [
     'lab2',
     'users',
     'authapp',
+    'rest_framework',
+    'drf_spectacular',
 ]
 
 MIDDLEWARE = [
@@ -88,6 +90,35 @@ DATABASES = {
         'PORT': os.getenv('DB_PORT', '5433'),  # Порт PostgreSQL
     }
 }
+
+REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Lab Project API',
+    'DESCRIPTION': 'Документация API для лабораторных работ',
+    'VERSION': '1.0.0',
+    'COMPONENTS': {
+        'securitySchemes': {
+            'BearerAuth': {
+                'type': 'http',
+                'scheme': 'bearer',
+                'bearerFormat': 'JWT',
+                'description': 'Введите JWT access token. В реальном приложении также используются HttpOnly cookies.'
+            },
+            'CookieAuth': {
+                'type': 'apiKey',
+                'in': 'cookie',
+                'name': 'access_token',
+                'description': 'Авторизация через HttpOnly cookie access_token.'
+            }
+        }
+    },
+}
+
+
 
 
 # Password validation

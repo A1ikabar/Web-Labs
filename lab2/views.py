@@ -5,8 +5,18 @@ from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
-from authapp.auth_service import get_current_user_from_access_token
+from rest_framework.decorators import api_view
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample, OpenApiParameter
+from lab2.serializers import (
+    WorkSerializer,
+    WorkCreateRequestSerializer,
+    WorkUpdateRequestSerializer,
+    WorkPatchRequestSerializer,
+    WorkListResponseSerializer,
+    ErrorResponseSerializer,
+)
 
+from authapp.auth_service import get_current_user_from_access_token
 
 from .models import Work
 
@@ -37,6 +47,77 @@ def get_active_work_or_none(work_id):
     except Work.DoesNotExist:
         return None
 
+@extend_schema(
+    tags=["Works"],
+    summary="Список работ и создание работы",
+    description="GET возвращает список работ с пагинацией. POST создаёт новую работу. Требуется авторизация.",
+    parameters=[
+        OpenApiParameter(name="page", type=int, location=OpenApiParameter.QUERY, description="Номер страницы"),
+        OpenApiParameter(name="limit", type=int, location=OpenApiParameter.QUERY, description="Количество элементов на странице"),
+    ],
+    request=WorkCreateRequestSerializer,
+    responses={
+        200: WorkListResponseSerializer,
+        201: WorkSerializer,
+        400: OpenApiResponse(response=ErrorResponseSerializer, description="Неверный JSON или некорректная пагинация"),
+        401: OpenApiResponse(response=ErrorResponseSerializer, description="Пользователь не авторизован"),
+        405: OpenApiResponse(response=ErrorResponseSerializer, description="Метод не поддерживается"),
+    },
+    examples=[
+        OpenApiExample(
+            "Пример создания работы",
+            value={
+                "title": "Мастер и Маргарита",
+                "description": "Роман о добре и зле",
+                "author_name": "Михаил Булгаков"
+            },
+            request_only=True,
+        ),
+        OpenApiExample(
+            "Пример успешного создания",
+            value={
+                "id": "550e8400-e29b-41d4-a716-446655440000",
+                "title": "Мастер и Маргарита",
+                "description": "Роман о добре и зле",
+                "author_name": "Михаил Булгаков",
+                "created_at": "2026-03-18T11:30:00Z",
+                "updated_at": "2026-03-18T11:30:00Z"
+            },
+            response_only=True,
+            status_codes=["201"],
+        ),
+        OpenApiExample(
+            "Пример списка работ",
+            value={
+                "data": [
+                    {
+                        "id": "550e8400-e29b-41d4-a716-446655440000",
+                        "title": "Мастер и Маргарита",
+                        "description": "Роман о добре и зле",
+                        "author_name": "Михаил Булгаков",
+                        "created_at": "2026-03-18T11:30:00Z",
+                        "updated_at": "2026-03-18T11:30:00Z"
+                    }
+                ],
+                "meta": {
+                    "total": 1,
+                    "page": 1,
+                    "limit": 10,
+                    "totalPages": 1
+                }
+            },
+            response_only=True,
+            status_codes=["200"],
+        ),
+        OpenApiExample(
+            "Ошибка авторизации",
+            value={"error": "unauthorized"},
+            response_only=True,
+            status_codes=["401"],
+        ),
+    ],
+)
+@api_view(["GET", "POST"])
 @csrf_exempt
 def works_list(request):
     user = get_authenticated_user(request)
@@ -101,6 +182,49 @@ def works_list(request):
 
     return JsonResponse({"error": "Method not allowed"}, status=405)
 
+@extend_schema(
+    tags=["Works"],
+    summary="Работа по ID",
+    description="Получение, обновление, частичное обновление и удаление работы по UUID. Требуется авторизация.",
+    request=WorkUpdateRequestSerializer,
+    responses={
+        200: WorkSerializer,
+        204: OpenApiResponse(description="Работа успешно удалена"),
+        400: OpenApiResponse(response=ErrorResponseSerializer, description="Неверный JSON или некорректные данные"),
+        401: OpenApiResponse(response=ErrorResponseSerializer, description="Пользователь не авторизован"),
+        403: OpenApiResponse(response=ErrorResponseSerializer, description="Нет прав на изменение или удаление"),
+        404: OpenApiResponse(response=ErrorResponseSerializer, description="Работа не найдена"),
+        405: OpenApiResponse(response=ErrorResponseSerializer, description="Метод не поддерживается"),
+    },
+    examples=[
+        OpenApiExample(
+            "Пример успешного ответа",
+            value={
+                "id": "550e8400-e29b-41d4-a716-446655440000",
+                "title": "Мастер и Маргарита",
+                "description": "Роман о добре и зле",
+                "author_name": "Михаил Булгаков",
+                "created_at": "2026-03-18T11:30:00Z",
+                "updated_at": "2026-03-18T11:30:00Z"
+            },
+            response_only=True,
+            status_codes=["200"],
+        ),
+        OpenApiExample(
+            "Пример ошибки доступа",
+            value={"error": "forbidden"},
+            response_only=True,
+            status_codes=["403"],
+        ),
+        OpenApiExample(
+            "Пример ошибки не найдено",
+            value={"error": "Work not found"},
+            response_only=True,
+            status_codes=["404"],
+        ),
+    ],
+)
+@api_view(["GET", "PUT", "PATCH", "DELETE"])
 @csrf_exempt
 def work_detail(request, work_id):
     work = get_active_work_or_none(work_id)
