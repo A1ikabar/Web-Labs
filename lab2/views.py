@@ -20,6 +20,8 @@ from authapp.auth_service import get_current_user_from_access_token
 
 from .models import Work
 
+from common.cache_service import cache_service
+
 def get_authenticated_user(request):
     access_token = request.COOKIES.get("access_token")
 
@@ -139,21 +141,31 @@ def works_list(request):
         except ValueError:
             return JsonResponse({"error": "Pagination must be numbers"}, status=400)
 
-        queryset = Work.objects.filter(deleted_at__isnull=True).order_by("created_at")
-        total = queryset.count()
-        total_pages = ceil(total / limit) if total > 0 else 1
-        offset = (page - 1) * limit
-        works = queryset[offset:offset + limit]
+    cache_key = f"wp:works:list:page:{page}:limit:{limit}"
+    cached_data = cache_service.get(cache_key)
 
-        return JsonResponse({
-            "data": [work_to_dict(work) for work in works],
-            "meta": {
-                "total": total,
-                "page": page,
-                "limit": limit,
-                "totalPages": total_pages
-            }
-        }, status=200)
+    if cached_data is not None:
+        return JsonResponse(cached_data, status=200)
+
+    queryset = Work.objects.filter(deleted_at__isnull=True).order_by("created_at")
+    total = queryset.count()
+    total_pages = ceil(total / limit) if total > 0 else 1
+    offset = (page - 1) * limit
+    works = queryset[offset:offset + limit]
+
+    response_data = {
+        "data": [work_to_dict(work) for work in works],
+        "meta": {
+            "total": total,
+            "page": page,
+            "limit": limit,
+            "totalPages": total_pages
+        }
+    }
+
+    cache_service.set(cache_key, response_data)
+
+    return JsonResponse(response_data, status=200)
 
     if request.method == "POST":
         try:
@@ -177,6 +189,8 @@ def works_list(request):
             author_name=author_name,
             owner=user
         )
+
+        cache_service.delete_by_pattern("wp:works:list:*")
 
         return JsonResponse(work_to_dict(work), status=201)
 
@@ -238,7 +252,16 @@ def work_detail(request, work_id):
         return JsonResponse({"error": "Work not found"}, status=404)
 
     if request.method == "GET":
-        return JsonResponse(work_to_dict(work), status=200)
+        cache_key = f"wp:works:detail:{work.id}"
+        cached_data = cache_service.get(cache_key)
+
+        if cached_data is not None:
+            return JsonResponse(cached_data, status=200)
+
+        response_data = work_to_dict(work) 
+        cache_service.set(cache_key, response_data)
+
+        return JsonResponse(response_data, status=200)
 
     if request.method == "PUT":
 
@@ -264,6 +287,9 @@ def work_detail(request, work_id):
         work.description = description
         work.author_name = author_name
         work.save()
+
+        cache_service.delete_by_pattern("wp:works:list:*")
+        cache_service.delete(f"wp:works:detail:{work.id}")
 
         return JsonResponse(work_to_dict(work), status=200)
 
@@ -293,6 +319,10 @@ def work_detail(request, work_id):
             work.author_name = body["author_name"]
 
         work.save()
+
+        cache_service.delete_by_pattern("wp:works:list:*")
+        cache_service.delete(f"wp:works:detail:{work.id}")
+
         return JsonResponse(work_to_dict(work), status=200)
 
     if request.method == "DELETE":
@@ -300,6 +330,10 @@ def work_detail(request, work_id):
             return JsonResponse({"error": "forbidden"}, status=403)
         work.deleted_at = timezone.now()
         work.save()
+
+        cache_service.delete_by_pattern("wp:works:list:*")
+        cache_service.delete(f"wp:works:detail:{work.id}")
+
         return HttpResponse(status=204)
 
     return JsonResponse({"error": "Method not allowed"}, status=405)

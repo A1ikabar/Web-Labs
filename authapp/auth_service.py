@@ -6,6 +6,7 @@ from authapp.jwt_utils import create_access_token, create_refresh_token, decode_
 from users.models import UserToken
 from django.utils import timezone
 from datetime import timedelta
+from common.cache_service import cache_service
 
 def register_user(dto):
     existing_user = User.objects.filter(email=dto.email).first()
@@ -33,6 +34,13 @@ def login_user(email: str, password: str):
 
     access_token = create_access_token(str(user.id))
     refresh_token = create_refresh_token(str(user.id))
+
+    access_payload = decode_access_token(access_token)
+    access_jti = access_payload.get("jti")
+
+    if access_jti:
+        cache_key = f"wp:auth:user:{user.id}:access:{access_jti}"
+        cache_service.set(cache_key, "valid", ttl=15 * 60)
 
     access_salt = generate_token_salt()
     refresh_salt = generate_token_salt()
@@ -70,6 +78,17 @@ def get_current_user_from_access_token(access_token: str):
         raise ValueError("invalid token type")
 
     user_id = payload.get("sub")
+
+    jti = payload.get("jti")
+
+    if not jti:
+        raise ValueError("invalid token: missing jti")
+
+    cache_key = f"wp:auth:user:{user_id}:access:{jti}"
+    cached_data = cache_service.get(cache_key)
+
+    if cached_data is None:
+        raise ValueError("token revoked or expired")
 
     try:
         user = User.objects.get(id=user_id, deleted_at__isnull=True)
@@ -136,6 +155,13 @@ def refresh_user_tokens(refresh_token: str):
     access_token = create_access_token(str(user.id))
     new_refresh_token = create_refresh_token(str(user.id))
 
+    access_payload = decode_access_token(access_token)
+    access_jti = access_payload.get("jti")
+
+    if access_jti:
+        cache_key = f"wp:auth:user:{user.id}:access:{access_jti}"
+        cache_service.set(cache_key, "valid", ttl=15 * 60)
+
     access_salt = generate_token_salt()
     refresh_salt = generate_token_salt()
 
@@ -164,6 +190,17 @@ def refresh_user_tokens(refresh_token: str):
 
 def logout_user(access_token: str):
 
+        try:
+            payload = decode_access_token(access_token)
+            user_id = payload.get("sub")
+            jti = payload.get("jti")
+
+            if user_id and jti:
+                cache_service.delete(f"wp:auth:user:{user_id}:access:{jti}")
+                cache_service.delete(f"wp:users:profile:{user_id}")
+        except Exception:
+            pass
+
         now = timezone.now()
 
         for token_record in UserToken.objects.filter(
@@ -180,6 +217,9 @@ def logout_user(access_token: str):
 
 def logout_all_user_sessions(access_token: str):
     user = get_current_user_from_access_token(access_token)
+
+    cache_service.delete_by_pattern(f"wp:auth:user:{user.id}:access:*")
+    cache_service.delete(f"wp:users:profile:{user.id}")
 
     UserToken.objects.filter(
         user=user,

@@ -1,12 +1,14 @@
 import os
 import jwt
 from datetime import datetime, timedelta, UTC
+import uuid
 
 def create_access_token(user_id: str) -> str:
     expiration_minutes = int(os.getenv('JWT_ACCESS_EXPIRATION_MINUTES', '15'))
     payload = {
         'sub': user_id,
         'type': 'access',
+        'jti': str(uuid.uuid4()),
         'exp': datetime.now(UTC) + timedelta(minutes=expiration_minutes),
     }
     return jwt.encode(payload, os.getenv('JWT_ACCESS_SECRET'), algorithm='HS256')

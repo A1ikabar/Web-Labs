@@ -19,6 +19,8 @@ from authapp.serializers import (
     ErrorResponseSerializer,
 )
 
+from common.cache_service import cache_service
+
 @extend_schema(
     tags=["Auth"],
     summary="Регистрация пользователя",
@@ -175,11 +177,21 @@ def whoami(request):
     try:
         user = get_current_user_from_access_token(access_token)
 
-        return JsonResponse({
+        cache_key = f"wp:users:profile:{user.id}"
+        cached_data = cache_service.get(cache_key)
+
+        if cached_data is not None:
+            return JsonResponse(cached_data, status=200)
+
+        response_data = {
             "id": str(user.id),
             "email": user.email,
             "phone": user.phone,
-        }, status=200)
+        }
+
+        cache_service.set(cache_key, response_data)
+
+        return JsonResponse(response_data, status=200)
 
     except ValueError as e:
         return JsonResponse({"error": str(e)}, status=401)
