@@ -141,33 +141,34 @@ def works_list(request):
         except ValueError:
             return JsonResponse({"error": "Pagination must be numbers"}, status=400)
 
-    cache_key = f"wp:works:list:page:{page}:limit:{limit}"
-    cached_data = cache_service.get(cache_key)
+    if request.method == "GET":
+        cache_key = f"wp:works:list:page:{page}:limit:{limit}"
+        cached_data = cache_service.get(cache_key)
 
-    if cached_data is not None:
-        return JsonResponse(cached_data, status=200)
+        if cached_data is not None:
+            return JsonResponse(cached_data, status=200)
 
-    queryset = Work.objects.filter(deleted_at__isnull=True).order_by("created_at")
-    total = queryset.count()
-    total_pages = ceil(total / limit) if total > 0 else 1
-    offset = (page - 1) * limit
-    works = queryset[offset:offset + limit]
+        queryset = Work.objects.filter(deleted_at__isnull=True).order_by("created_at")
+        total = queryset.count()
+        total_pages = ceil(total / limit) if total > 0 else 1
+        offset = (page - 1) * limit
+        works = queryset[offset:offset + limit]
 
-    response_data = {
-        "data": [work_to_dict(work) for work in works],
-        "meta": {
-            "total": total,
-            "page": page,
-            "limit": limit,
-            "totalPages": total_pages
+        response_data = {
+            "data": [work_to_dict(work) for work in works],
+            "meta": {
+                "total": total,
+                "page": page,
+                "limit": limit,
+                "totalPages": total_pages
+            }
         }
-    }
 
-    cache_service.set(cache_key, response_data)
+        cache_service.set(cache_key, response_data)
 
-    return JsonResponse(response_data, status=200)
+        return JsonResponse(response_data, status=200)
 
-    if request.method == "POST":
+    elif request.method == "POST":
         try:
             body = json.loads(request.body)
         except json.JSONDecodeError:
