@@ -2,11 +2,11 @@ import json
 from math import ceil
 
 from django.http import JsonResponse, HttpResponse
-from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
 from rest_framework.decorators import api_view
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample, OpenApiParameter
+
 from lab2.serializers import (
     WorkSerializer,
     WorkCreateRequestSerializer,
@@ -17,10 +17,14 @@ from lab2.serializers import (
 )
 
 from authapp.auth_service import get_current_user_from_access_token
-
-from .models import Work
-
 from common.cache_service import cache_service
+from lab2.mongo_service import (
+    create_work,
+    find_active_work_by_id,
+    get_works_paginated,
+    update_work,
+    soft_delete_work,
+)
 
 def get_authenticated_user(request):
     access_token = request.COOKIES.get("access_token")
@@ -35,19 +39,16 @@ def get_authenticated_user(request):
 
 def work_to_dict(work):
     return {
-        "id": str(work.id),
-        "title": work.title,
-        "description": work.description,
-        "author_name": work.author_name,
-        "created_at": work.created_at.isoformat() if work.created_at else None,
-        "updated_at": work.updated_at.isoformat() if work.updated_at else None,
+        "id": str(work["_id"]),
+        "title": work["title"],
+        "description": work["description"],
+        "author_name": work["author_name"],
+        "created_at": work["created_at"].isoformat() if work.get("created_at") else None,
+        "updated_at": work["updated_at"].isoformat() if work.get("updated_at") else None,
     }
 
 def get_active_work_or_none(work_id):
-    try:
-        return Work.objects.get(id=work_id, deleted_at__isnull=True)
-    except Work.DoesNotExist:
-        return None
+    return find_active_work_by_id(work_id)
 
 @extend_schema(
     tags=["Works"],
@@ -78,7 +79,7 @@ def get_active_work_or_none(work_id):
         OpenApiExample(
             "Пример успешного создания",
             value={
-                "id": "550e8400-e29b-41d4-a716-446655440000",
+                "id": "6617ff8c5b0f5c8e6f6b1234",
                 "title": "Мастер и Маргарита",
                 "description": "Роман о добре и зле",
                 "author_name": "Михаил Булгаков",
@@ -93,7 +94,7 @@ def get_active_work_or_none(work_id):
             value={
                 "data": [
                     {
-                        "id": "550e8400-e29b-41d4-a716-446655440000",
+                        "id": "6617ff8c5b0f5c8e6f6b1234",
                         "title": "Мастер и Маргарита",
                         "description": "Роман о добре и зле",
                         "author_name": "Михаил Булгаков",
@@ -141,18 +142,14 @@ def works_list(request):
         except ValueError:
             return JsonResponse({"error": "Pagination must be numbers"}, status=400)
 
-    if request.method == "GET":
         cache_key = f"wp:works:list:page:{page}:limit:{limit}"
         cached_data = cache_service.get(cache_key)
 
         if cached_data is not None:
             return JsonResponse(cached_data, status=200)
 
-        queryset = Work.objects.filter(deleted_at__isnull=True).order_by("created_at")
-        total = queryset.count()
+        total, works = get_works_paginated(page, limit)
         total_pages = ceil(total / limit) if total > 0 else 1
-        offset = (page - 1) * limit
-        works = queryset[offset:offset + limit]
 
         response_data = {
             "data": [work_to_dict(work) for work in works],
@@ -165,7 +162,6 @@ def works_list(request):
         }
 
         cache_service.set(cache_key, response_data)
-
         return JsonResponse(response_data, status=200)
 
     elif request.method == "POST":
@@ -184,11 +180,11 @@ def works_list(request):
                 status=400
             )
 
-        work = Work.objects.create(
+        work = create_work(
             title=title,
             description=description,
             author_name=author_name,
-            owner=user
+            owner_id=str(user["_id"]),
         )
 
         cache_service.delete_by_pattern("wp:works:list:*")
@@ -200,7 +196,7 @@ def works_list(request):
 @extend_schema(
     tags=["Works"],
     summary="Работа по ID",
-    description="Получение, обновление, частичное обновление и удаление работы по UUID. Требуется авторизация.",
+    description="Получение, обновление, частичное обновление и удаление работы по ID. Требуется авторизация.",
     request=WorkUpdateRequestSerializer,
     responses={
         200: WorkSerializer,
@@ -215,7 +211,237 @@ def works_list(request):
         OpenApiExample(
             "Пример успешного ответа",
             value={
-                "id": "550e8400-e29b-41d4-a716-446655440000",
+                "id": "6617ff8c5b0f5c8e6f6b1234",
+                "title": "Мастер и Маргарита",
+                "description": "Роман о добре и зле",
+                "author_name": "Михаил Булгаков",
+                "created_at": "2026-03-18T11:30:00Z",
+                "updated_at": "2026-03-18T11:30:00Z"
+            },
+            response_only=True,
+            status_codes=["200"],
+        ),
+        OpenApiExample(
+            "Пример ошибки доступа",
+            value={"error": "forbidden"},
+            response_only=True,
+            status_codes=["403"],
+        ),
+        OpenApiExample(
+            "Ошибка авторизации",
+            value={"error": "unauthorized"},
+            response_only=True,
+            status_codes=["401"],
+        ),
+    ],
+)
+@api_view(["GET", "POST"])
+@csrf_exempt
+def works_list(request):
+    user = get_authenticated_user(request)
+
+    if not user:
+        return JsonResponse({"error": "unauthorized"}, status=401)
+
+    if request.method == "GET":
+        page = request.GET.get("page", "1")
+        limit = request.GET.get("limit", "10")
+
+        try:
+            page = int(page)
+            limit = int(limit)
+
+            if page < 1 or limit < 1 or limit > 100:
+                return JsonResponse({"error": "Invalid pagination"}, status=400)
+
+        except ValueError:
+            return JsonResponse({"error": "Pagination must be numbers"}, status=400)
+
+        cache_key = f"wp:works:list:page:{page}:limit:{limit}"
+        cached_data = cache_service.get(cache_key)
+
+        if cached_data is not None:
+            return JsonResponse(cached_data, status=200)
+
+        total, works = get_works_paginated(page, limit)
+        total_pages = ceil(total / limit) if total > 0 else 1
+
+        response_data = {
+            "data": [work_to_dict(work) for work in works],
+            "meta": {
+                "total": total,
+                "page": page,
+                "limit": limit,
+                "totalPages": total_pages
+            }
+        }
+
+        cache_service.set(cache_key, response_data)
+        return JsonResponse(response_data, status=200)
+
+    elif request.method == "POST":
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+        title = body.get("title")
+        description = body.get("description")
+        author_name = body.get("author_name")
+
+        if not title or not description or not author_name:
+            return JsonResponse(
+                {"error": "title, description and author_name are required"},
+                status=400
+            )
+
+        work = create_work(
+            title=title,
+            description=description,
+            author_name=author_name,
+            owner_id=str(user["_id"]),
+        )
+
+        cache_service.delete_by_pattern("wp:works:list:*")
+
+        return JsonResponse(work_to_dict(work), status=201)
+
+    return JsonResponse({"error": "Method not allowed"}, status=405)
+
+@extend_schema(
+    tags=["Works"],
+    summary="Работа по ID",
+    description="Получение, обновление, частичное обновление и удаление работы по ID. Требуется авторизация.",
+    request=WorkUpdateRequestSerializer,
+    responses={
+        200: WorkSerializer,
+        204: OpenApiResponse(description="Работа успешно удалена"),
+        400: OpenApiResponse(response=ErrorResponseSerializer, description="Неверный JSON или некорректные данные"),
+        401: OpenApiResponse(response=ErrorResponseSerializer, description="Пользователь не авторизован"),
+        403: OpenApiResponse(response=ErrorResponseSerializer, description="Нет прав на изменение или удаление"),
+        404: OpenApiResponse(response=ErrorResponseSerializer, description="Работа не найдена"),
+        405: OpenApiResponse(response=ErrorResponseSerializer, description="Метод не поддерживается"),
+    },
+    examples=[
+        OpenApiExample(
+            "Пример успешного ответа",
+            value={
+                "id": "6617ff8c5b0f5c8e6f6b1234",
+                "title": "Мастер и Маргарита",
+                "description": "Роман о добре и зле",
+                "author_name": "Михаил Булгаков",
+                "created_at": "2026-03-18T11:30:00Z",
+                "updated_at": "2026-03-18T11:30:00Z"
+            },
+            response_only=True,
+            status_codes=["200"],
+        ),
+        OpenApiExample(
+            "Пример ошибки доступа",
+            value={"error": "forbidden"},
+            response_only=True,
+            status_codes=["403"],
+        ),
+        OpenApiExample(
+            "Ошибка авторизации",
+            value={"error": "unauthorized"},
+            response_only=True,
+            status_codes=["401"],
+        ),
+    ],
+)
+@api_view(["GET", "POST"])
+@csrf_exempt
+def works_list(request):
+    user = get_authenticated_user(request)
+
+    if not user:
+        return JsonResponse({"error": "unauthorized"}, status=401)
+
+    if request.method == "GET":
+        page = request.GET.get("page", "1")
+        limit = request.GET.get("limit", "10")
+
+        try:
+            page = int(page)
+            limit = int(limit)
+
+            if page < 1 or limit < 1 or limit > 100:
+                return JsonResponse({"error": "Invalid pagination"}, status=400)
+
+        except ValueError:
+            return JsonResponse({"error": "Pagination must be numbers"}, status=400)
+
+        cache_key = f"wp:works:list:page:{page}:limit:{limit}"
+        cached_data = cache_service.get(cache_key)
+
+        if cached_data is not None:
+            return JsonResponse(cached_data, status=200)
+
+        total, works = get_works_paginated(page, limit)
+        total_pages = ceil(total / limit) if total > 0 else 1
+
+        response_data = {
+            "data": [work_to_dict(work) for work in works],
+            "meta": {
+                "total": total,
+                "page": page,
+                "limit": limit,
+                "totalPages": total_pages
+            }
+        }
+
+        cache_service.set(cache_key, response_data)
+        return JsonResponse(response_data, status=200)
+
+    elif request.method == "POST":
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+        title = body.get("title")
+        description = body.get("description")
+        author_name = body.get("author_name")
+
+        if not title or not description or not author_name:
+            return JsonResponse(
+                {"error": "title, description and author_name are required"},
+                status=400
+            )
+
+        work = create_work(
+            title=title,
+            description=description,
+            author_name=author_name,
+            owner_id=str(user["_id"]),
+        )
+
+        cache_service.delete_by_pattern("wp:works:list:*")
+
+        return JsonResponse(work_to_dict(work), status=201)
+
+    return JsonResponse({"error": "Method not allowed"}, status=405)
+
+@extend_schema(
+    tags=["Works"],
+    summary="Работа по ID",
+    description="Получение, обновление, частичное обновление и удаление работы по ID. Требуется авторизация.",
+    request=WorkUpdateRequestSerializer,
+    responses={
+        200: WorkSerializer,
+        204: OpenApiResponse(description="Работа успешно удалена"),
+        400: OpenApiResponse(response=ErrorResponseSerializer, description="Неверный JSON или некорректные данные"),
+        401: OpenApiResponse(response=ErrorResponseSerializer, description="Пользователь не авторизован"),
+        403: OpenApiResponse(response=ErrorResponseSerializer, description="Нет прав на изменение или удаление"),
+        404: OpenApiResponse(response=ErrorResponseSerializer, description="Работа не найдена"),
+        405: OpenApiResponse(response=ErrorResponseSerializer, description="Метод не поддерживается"),
+    },
+    examples=[
+        OpenApiExample(
+            "Пример успешного ответа",
+            value={
+                "id": "6617ff8c5b0f5c8e6f6b1234",
                 "title": "Мастер и Маргарита",
                 "description": "Роман о добре и зле",
                 "author_name": "Михаил Булгаков",
@@ -242,33 +468,32 @@ def works_list(request):
 @api_view(["GET", "PUT", "PATCH", "DELETE"])
 @csrf_exempt
 def work_detail(request, work_id):
-    work = get_active_work_or_none(work_id)
-
     user = get_authenticated_user(request)
 
     if not user:
         return JsonResponse({"error": "unauthorized"}, status=401)
 
+    work = get_active_work_or_none(work_id)
+
     if work is None:
         return JsonResponse({"error": "Work not found"}, status=404)
 
     if request.method == "GET":
-        cache_key = f"wp:works:detail:{work.id}"
+        cache_key = f"wp:works:detail:{str(work['_id'])}"
         cached_data = cache_service.get(cache_key)
 
         if cached_data is not None:
             return JsonResponse(cached_data, status=200)
 
-        response_data = work_to_dict(work) 
+        response_data = work_to_dict(work)
         cache_service.set(cache_key, response_data)
 
         return JsonResponse(response_data, status=200)
 
+    if work.get("owner_id") != str(user["_id"]):
+        return JsonResponse({"error": "forbidden"}, status=403)
+
     if request.method == "PUT":
-
-        if work.owner_id != user.id:
-            return JsonResponse({"error": "forbidden"}, status=403)
-
         try:
             body = json.loads(request.body)
         except json.JSONDecodeError:
@@ -284,56 +509,52 @@ def work_detail(request, work_id):
                 status=400
             )
 
-        work.title = title
-        work.description = description
-        work.author_name = author_name
-        work.save()
+        updated_work = update_work(work_id, {
+            "title": title,
+            "description": description,
+            "author_name": author_name,
+        })
 
         cache_service.delete_by_pattern("wp:works:list:*")
-        cache_service.delete(f"wp:works:detail:{work.id}")
+        cache_service.delete(f"wp:works:detail:{str(work['_id'])}")
 
-        return JsonResponse(work_to_dict(work), status=200)
+        return JsonResponse(work_to_dict(updated_work), status=200)
 
     if request.method == "PATCH":
-
-        if work.owner_id != user.id:
-            return JsonResponse({"error": "forbidden"}, status=403)
-
         try:
             body = json.loads(request.body)
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON"}, status=400)
 
+        update_data = {}
+
         if "title" in body:
             if not body["title"]:
                 return JsonResponse({"error": "title cannot be empty"}, status=400)
-            work.title = body["title"]
+            update_data["title"] = body["title"]
 
         if "description" in body:
             if not body["description"]:
                 return JsonResponse({"error": "description cannot be empty"}, status=400)
-            work.description = body["description"]
+            update_data["description"] = body["description"]
 
         if "author_name" in body:
             if not body["author_name"]:
                 return JsonResponse({"error": "author_name cannot be empty"}, status=400)
-            work.author_name = body["author_name"]
+            update_data["author_name"] = body["author_name"]
 
-        work.save()
+        updated_work = update_work(work_id, update_data)
 
         cache_service.delete_by_pattern("wp:works:list:*")
-        cache_service.delete(f"wp:works:detail:{work.id}")
+        cache_service.delete(f"wp:works:detail:{str(work['_id'])}")
 
-        return JsonResponse(work_to_dict(work), status=200)
+        return JsonResponse(work_to_dict(updated_work), status=200)
 
     if request.method == "DELETE":
-        if work.owner_id != user.id:
-            return JsonResponse({"error": "forbidden"}, status=403)
-        work.deleted_at = timezone.now()
-        work.save()
+        soft_delete_work(work_id)
 
         cache_service.delete_by_pattern("wp:works:list:*")
-        cache_service.delete(f"wp:works:detail:{work.id}")
+        cache_service.delete(f"wp:works:detail:{str(work['_id'])}")
 
         return HttpResponse(status=204)
 

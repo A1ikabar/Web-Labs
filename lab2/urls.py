@@ -3,5 +3,5 @@ from .views import works_list, work_detail
 
 urlpatterns = [
     path("works", works_list, name="works_list"),
-    path("works/<uuid:work_id>", work_detail, name="work_detail"),
+    path("works/<str:work_id>", work_detail, name="work_detail"),
 ]

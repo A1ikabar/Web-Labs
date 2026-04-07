@@ -1,18 +1,22 @@
 version: "3.8"
 
 services:
-  postgres:
-    image: postgres:16
-    container_name: wp_labs_db
+  mongo:
+    image: mongo:6
+    container_name: wp_labs_mongo
     restart: unless-stopped
     environment:
-      POSTGRES_USER: student
-      POSTGRES_PASSWORD: student_secure_password
-      POSTGRES_DB: wp_labs
+      MONGO_INITDB_ROOT_USERNAME: ${DB_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "5433:5432"
+      - "27017:27017"
     volumes:
-      - wp_labs_postgres:/var/lib/postgresql/data
+      - wp_labs_mongo:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
@@ -25,5 +29,5 @@ services:
     command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
 
 volumes:
-  wp_labs_postgres:
+  wp_labs_mongo:
   wp_labs_redis:

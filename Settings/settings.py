@@ -80,16 +80,9 @@ WSGI_APPLICATION = 'Settings.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',  # PostgreSQL
-        'NAME': os.getenv('DB_NAME'),  # Имя базы данных
-        'USER': os.getenv('DB_USER'),  # Имя пользователя для подключения
-        'PASSWORD': os.getenv('DB_PASSWORD'),  # Пароль
-        'HOST': os.getenv('DB_HOST', 'localhost'),  # Хост базы данных
-        'PORT': os.getenv('DB_PORT', '5433'),  # Порт PostgreSQL
-    }
-}
+# MongoDB
+MONGO_URI = os.getenv('MONGO_URI')
+MONGO_DB_NAME = os.getenv('DB_NAME', 'wp_labs')
 
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
@@ -163,3 +156,4 @@ REDIS_PORT = int(os.getenv('REDIS_PORT', '6379'))
 REDIS_PASSWORD = os.getenv('REDIS_PASSWORD', '')
 CACHE_TTL_DEFAULT = int(os.getenv('CACHE_TTL_DEFAULT', '300'))
 JWT_ACCESS_EXPIRATION_MINUTES = int(os.getenv('JWT_ACCESS_EXPIRATION_MINUTES', '15'))
+JWT_REFRESH_EXPIRATION_DAYS = int(os.getenv('JWT_REFRESH_EXPIRATION_DAYS', '7'))

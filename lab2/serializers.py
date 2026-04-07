@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 class WorkSerializer(serializers.Serializer):
-    id = serializers.UUIDField(help_text="UUID работы")
+    id = serializers.CharField()
     title = serializers.CharField(help_text="Название работы")
     description = serializers.CharField(help_text="Описание работы")
     author_name = serializers.CharField(help_text="Имя автора")

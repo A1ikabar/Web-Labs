@@ -67,8 +67,8 @@ def register(request):
         user = register_user(dto)
 
         return JsonResponse({
-            "id": str(user.id),
-            "email": user.email,
+            "id": str(user["_id"]),
+            "email": user["email"],
         }, status=201)
 
     except ValueError as e:
@@ -130,7 +130,7 @@ def login(request):
 
         response = JsonResponse({
             "message": "login successful",
-            "email": user.email
+            "email": user["email"]
         }, status=200)
 
         response.set_cookie(
@@ -177,16 +177,16 @@ def whoami(request):
     try:
         user = get_current_user_from_access_token(access_token)
 
-        cache_key = f"wp:users:profile:{user.id}"
+        cache_key = f"wp:users:profile:{str(user['_id'])}"
         cached_data = cache_service.get(cache_key)
 
         if cached_data is not None:
             return JsonResponse(cached_data, status=200)
 
         response_data = {
-            "id": str(user.id),
-            "email": user.email,
-            "phone": user.phone,
+            "id": str(user["_id"]),
+            "email": user["email"],
+            "phone": user.get("phone"),
         }
 
         cache_service.set(cache_key, response_data)
@@ -222,7 +222,7 @@ def refresh(request):
 
         response = JsonResponse({
             "message": "tokens refreshed",
-            "email": user.email
+             "email": user["email"]
         }, status=200)
 
         response.set_cookie(
