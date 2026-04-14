@@ -28,6 +28,26 @@ services:
       - wp_labs_redis:/data
     command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
 
+  minio:
+    image: minio/minio:latest
+    container_name: wp_labs_minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - wp_labs_minio:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   wp_labs_mongo:
   wp_labs_redis:
+  wp_labs_minio:

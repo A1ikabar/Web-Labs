@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'authapp',
     'rest_framework',
     'drf_spectacular',
+    'storage',
 ]
 
 MIDDLEWARE = [
@@ -157,3 +158,17 @@ REDIS_PASSWORD = os.getenv('REDIS_PASSWORD', '')
 CACHE_TTL_DEFAULT = int(os.getenv('CACHE_TTL_DEFAULT', '300'))
 JWT_ACCESS_EXPIRATION_MINUTES = int(os.getenv('JWT_ACCESS_EXPIRATION_MINUTES', '15'))
 JWT_REFRESH_EXPIRATION_DAYS = int(os.getenv('JWT_REFRESH_EXPIRATION_DAYS', '7'))
+
+# Minio
+MINIO_ENDPOINT = os.getenv('MINIO_ENDPOINT', 'localhost:9000')
+MINIO_ACCESS_KEY = os.getenv('MINIO_ACCESS_KEY', '')
+MINIO_SECRET_KEY = os.getenv('MINIO_SECRET_KEY', '')
+MINIO_BUCKET = os.getenv('MINIO_BUCKET', 'wp-labs-files')
+MINIO_USE_SSL = os.getenv('MINIO_USE_SSL', 'false').lower() == 'true'
+MAX_FILE_SIZE = int(os.getenv('MAX_FILE_SIZE', '10485760'))
+
+ALLOWED_AVATAR_MIME_TYPES = [
+    'image/png',
+    'image/jpeg',
+    'image/jpg',
+]
