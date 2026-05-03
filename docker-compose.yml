@@ -46,8 +46,22 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+  
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: wp_labs_rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - wp_labs_rabbitmq:/var/lib/rabbitmq
 
 volumes:
   wp_labs_mongo:
   wp_labs_redis:
   wp_labs_minio:
+  wp_labs_rabbitmq:

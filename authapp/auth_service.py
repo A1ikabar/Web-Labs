@@ -1,6 +1,10 @@
 from datetime import timedelta
 from django.utils import timezone
 
+from uuid import uuid4
+from datetime import datetime
+from common.rabbitmq_service import rabbitmq_service
+
 from authapp.utils import hash_password, verify_password, generate_token_salt, hash_token
 from authapp.jwt_utils import (
     create_access_token,
@@ -33,6 +37,26 @@ def register_user(dto):
         phone=getattr(dto, "phone", None),
         password_hash=password_hash,
         password_salt=password_salt,
+    )
+
+    event = {
+        "eventId": str(uuid4()),
+        "eventType": "user.registered",
+        "timestamp": datetime.utcnow().isoformat(),
+        "payload": {
+            "userId": str(user["_id"]),
+            "email": user["email"],
+            "displayName": user.get("email"),
+        },
+        "metadata": {
+            "attempt": 1,
+            "sourceService": "authapp",
+        },
+    }
+
+    rabbitmq_service.publish(
+        routing_key="user.registered",
+        payload=event,
     )
 
     return user

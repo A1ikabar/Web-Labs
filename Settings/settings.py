@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'drf_spectacular',
     'storage',
+    'common',
 ]
 
 MIDDLEWARE = [
@@ -172,3 +173,26 @@ ALLOWED_AVATAR_MIME_TYPES = [
     'image/jpeg',
     'image/jpg',
 ]
+
+# RabbitMQ
+RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
+RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", "5672"))
+RABBITMQ_USER = os.getenv("RABBITMQ_USER", "student")
+RABBITMQ_PASS = os.getenv("RABBITMQ_PASS", "student_rabbit_pass")
+
+RABBITMQ_EXCHANGE = os.getenv("RABBITMQ_EXCHANGE", "app.events")
+RABBITMQ_DLX = os.getenv("RABBITMQ_DLX", "app.dlx")
+
+QUEUE_USER_REGISTERED = os.getenv(
+    "QUEUE_USER_REGISTERED",
+    "wp.auth.user.registered"
+)
+
+# SMTP
+SMTP_HOST = os.getenv("SMTP_HOST", "")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASS = os.getenv("SMTP_PASS", "")
+SMTP_FROM = os.getenv("SMTP_FROM", SMTP_USER)
+SMTP_SECURE = os.getenv("SMTP_SECURE", "true").lower() == "true"
+LOGIN_URL = os.getenv("LOGIN_URL", "http://127.0.0.1:8000/auth/login")
