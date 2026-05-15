@@ -52,6 +52,12 @@ def handle_user_registered(ch, method, properties, body):
             user_id=payload["userId"],
         )
 
+        print(
+            f"User registered event processed: event_id={event_id}, email={payload['email']}",
+            flush=True,
+        )
+
+
         cache_service.set(cache_key, True, ttl=24 * 60 * 60)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
