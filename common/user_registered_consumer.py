@@ -1,5 +1,6 @@
 import json
 import logging
+from uuid import uuid4
 
 from django.conf import settings
 
@@ -21,12 +22,30 @@ def handle_user_registered(ch, method, properties, body):
     attempt = int(metadata.get("attempt", 1))
 
     cache_key = f"wp:events:processed:{event_id}"
+    lock_key = f"wp:locks:events:{event_id}"
+    lock_id = str(uuid4())
 
     if cache_service.get(cache_key):
         ch.basic_ack(delivery_tag=method.delivery_tag)
         return
+    
+    lock_acquired = cache_service.acquire_lock(
+    key=lock_key,
+    value=lock_id,
+    ttl=60,
+)
+
+    if lock_acquired is False:
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+        logger.info(f"Event {event_id} is already being processed by another consumer")
+        return
 
     try:
+        if cache_service.get(cache_key):
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            logger.info(f"Event {event_id} already processed after lock")
+            return
+
         send_welcome_email(
             to_email=payload["email"],
             display_name=payload.get("displayName", payload["email"]),
@@ -58,6 +77,10 @@ def handle_user_registered(ch, method, properties, body):
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
         logger.warning(f"Event {event_id} retry {attempt + 1}")
+
+    finally:
+        if lock_acquired is True:
+            cache_service.release_lock(lock_key, lock_id)
 
 def start_user_registered_consumer():
     rabbitmq_service.connect()

@@ -1,0 +1,9 @@
+﻿.venv
+.vs
+.git
+__pycache__
+*.pyc
+db.sqlite3
+.env
+*.log
+register.json

@@ -64,4 +64,39 @@ class CacheService:
         except Exception as e:
             logger.warning(f"Redis delete_by_pattern failed for pattern={pattern}: {e}")
 
+    def acquire_lock(self, key: str, value: str, ttl: int = 30):
+        if not self.client:
+            return None
+
+        try:
+            return bool(
+                self.client.set(
+                    key,
+                    value,
+                    ex=ttl,
+                    nx=True,
+                )
+            )
+        except Exception as e:
+            logger.warning(f"Redis acquire_lock failed for key={key}: {e}")
+            return None
+
+    def release_lock(self, key: str, value: str):
+        if not self.client:
+            return None
+
+        script = """
+        if redis.call("get", KEYS[1]) == ARGV[1] then
+            return redis.call("del", KEYS[1])
+        else
+            return 0
+        end
+        """
+
+        try:
+            return self.client.eval(script, 1, key, value) == 1
+        except Exception as e:
+            logger.warning(f"Redis release_lock failed for key={key}: {e}")
+            return None
+
 cache_service = CacheService()

@@ -1,0 +1,28 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-registered-consumer
+  namespace: wp-labs
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: user-registered-consumer
+  template:
+    metadata:
+      labels:
+        app: user-registered-consumer
+    spec:
+      containers:
+        - name: user-registered-consumer
+          image: wp-labs/api:1.0.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - python
+            - manage.py
+            - consume_user_registered
+          envFrom:
+            - configMapRef:
+                name: api-config
+            - secretRef:
+                name: app-secrets
