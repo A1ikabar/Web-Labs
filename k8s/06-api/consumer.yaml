@@ -3,8 +3,16 @@ kind: Deployment
 metadata:
   name: user-registered-consumer
   namespace: wp-labs
+  labels:
+    app: user-registered-consumer
+    component: backend
 spec:
-  replicas: 1
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: user-registered-consumer
@@ -12,17 +20,100 @@ spec:
     metadata:
       labels:
         app: user-registered-consumer
+        component: backend
     spec:
+      terminationGracePeriodSeconds: 30
+
       containers:
         - name: user-registered-consumer
           image: wp-labs/api:1.0.0
           imagePullPolicy: IfNotPresent
-          command:
-            - python
-            - manage.py
-            - consume_user_registered
+          command: ["python", "manage.py", "consume_user_registered"]
+
           envFrom:
             - configMapRef:
                 name: api-config
             - secretRef:
                 name: app-secrets
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+              subPath: tmp
+            - name: logs
+              mountPath: /app/logs
+              subPath: logs
+
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 100Mi
+            medium: Memory
+        - name: logs
+          emptyDir:
+            sizeLimit: 200Mi
+
+
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: user-registered-consumer
+#   namespace: wp-labs
+# spec:
+#   replicas: 3
+#   selector:
+#     matchLabels:
+#       app: user-registered-consumer
+#   template:
+#     metadata:
+#       labels:
+#         app: user-registered-consumer
+#         # Фрагмент Deployment
+
+#   spec:
+#     containers:
+#     - name: user-registered-consumer
+#       image: wp-labs/api:1.0.0
+#       imagePullPolicy:
+#         command:
+#           - python
+#           - manage.py
+#           - consume_user_registered
+#       envFrom:
+#           - configMapRef:
+#             name: api-config
+#           - secretRef:
+#             name: app-secrets
+#       # readinessProbe:
+#       #   httpGet:
+#       #     path: /health/ready
+#       #     port: 4200
+#       #     initialDelaySeconds: 10
+#       #     periodSeconds: 5
+
+
+
+#     # spec:
+#       # containers:
+#         # - name: user-registered-consumer
+#           # image: wp-labs/api:1.0.0
+           
